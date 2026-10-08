@@ -1,7 +1,7 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.1
+**Version:** 1.2
 **Last Updated:** 2026-10-08
 **Document Owner:** Leon Small
 
@@ -429,7 +429,103 @@ setting (timer trigger scheduling/locking — see Section 17).
 6. **Review + create → Create**. Wait for deployment to complete, then
    **Go to resource**.
 
-### Step 4 — Configure Application Settings
+### Step 4 — Create an Azure Key Vault
+
+Key Vault is the recommended store for the three secret configuration
+values (`SharePoint:ClientSecret`, `Cloudinary:ApiSecret`,
+`Email:SmtpPassword` — see Section 8). Create it now, before configuring
+Application Settings, so the Function App can reference it directly.
+
+1. In the resource group, **+ Create → Key Vault**.
+2. **Basics** tab:
+   - **Key vault name**: globally unique, 3–24 characters, letters/digits/
+     hyphens only (e.g. `kv-fboutlet-housekeep`, following the same naming
+     pattern as the other resources created in this guide).
+   - **Region**: same as the resource group.
+   - **Pricing tier**: `Standard`.
+3. **Access configuration** tab:
+   - **Permission model**: `Azure role-based access control` (RBAC) —
+     recommended over the legacy `Vault access policy` model, and the
+     model assumed by Step 6 below.
+   - Leave **Resource access** (deployment/disk encryption) switches off —
+     not needed by this project.
+4. Leave **Recovery options** (soft delete, typically 90 days) at their
+   defaults — new vaults cannot disable soft delete. For a production
+   vault, consider enabling **Purge protection** as well, which prevents
+   the vault (and its secrets) from being permanently deleted before the
+   soft-delete retention period expires, even by someone with delete
+   permissions.
+5. **Networking** tab: leave **Public access** enabled unless your
+   organization requires private endpoints (not required by this project).
+6. **Review + create → Create**.
+
+**Equivalent via Azure CLI:**
+
+```text
+az keyvault create \
+  --resource-group rg-fboutlet-housekeeping-prod \
+  --name kv-fboutlet-housekeep \
+  --location <region> \
+  --sku standard \
+  --enable-rbac-authorization true
+```
+
+### Step 5 — Add Secrets to the Key Vault
+
+1. In the Key Vault resource, go to **Objects → Secrets → + Generate/Import**.
+2. Create one secret per value, using a hyphenated secret **name** (Key
+   Vault secret names only allow letters, digits, and hyphens — they
+   cannot contain the colons or double-underscores used by the
+   application's own configuration keys, even though each secret holds the
+   same value):
+
+   | Key Vault secret name     | Value                                 | Corresponds to config key     |
+   | ------------------------------| ------------------------------------------| ------------------------------------|
+   | `SharePoint-ClientSecret`    | The App Registration client secret (Section 12). | `SharePoint:ClientSecret`    |
+   | `Cloudinary-ApiSecret`       | The Cloudinary API secret (Section 13).          | `Cloudinary:ApiSecret`       |
+   | `Email-SmtpPassword`        | The SMTP account password (Section 13).          | `Email:SmtpPassword`        |
+
+3. For each: **Upload options**: `Manual`, enter the **Name** and **Value**,
+   leave **Activation/Expiration date** blank unless your organization
+   requires secret expiry, **Create**.
+4. Open each created secret and record its **Secret Identifier** (shown
+   under the current version) — it has the form
+   `https://<vault-name>.vault.azure.net/secrets/<secret-name>/<version>`.
+   You will use the base URI (without the version, to always resolve the
+   latest) in Step 7.
+
+**Equivalent via Azure CLI:**
+
+```text
+az keyvault secret set --vault-name kv-fboutlet-housekeep \
+  --name SharePoint-ClientSecret --value "<the-client-secret-value>"
+az keyvault secret set --vault-name kv-fboutlet-housekeep \
+  --name Cloudinary-ApiSecret --value "<the-cloudinary-api-secret-value>"
+az keyvault secret set --vault-name kv-fboutlet-housekeep \
+  --name Email-SmtpPassword --value "<the-smtp-password-value>"
+```
+
+Never record actual secret values in this document or any other committed
+file — the placeholders above illustrate the command shape only.
+
+### Step 6 — Grant the Function App Access to the Key Vault
+
+1. In the Function App, go to **Settings → Identity**, switch
+   **System assigned** to **On**, **Save**. Record the generated **Object
+   (principal) ID**.
+2. In the Key Vault resource, go to **Access control (IAM) → + Add → Add
+   role assignment**, select the **Key Vault Secrets User** role, assign it
+   to the Function App's managed identity (search by the Function App's
+   name), **Review + assign**.
+3. (If the Key Vault instead uses the legacy **Access policies** permission
+   model rather than Azure RBAC): **Access policies → + Create**, grant
+   **Get** and **List** secret permissions to the Function App's managed
+   identity.
+4. Role/policy assignments can take a few minutes to propagate; if Step 7's
+   verification shows a resolution error immediately afterward, wait and
+   retry before troubleshooting further.
+
+### Step 7 — Configure Application Settings
 
 1. In the Function App, go to **Settings → Environment variables**
    (older portal versions label this **Configuration → Application
@@ -439,34 +535,32 @@ setting (timer trigger scheduling/locking — see Section 17).
    `Email:EmailEnabled`, etc.), using the **double-underscore** form of the
    key (e.g. `Cleanup__EntryAgeDays`) as shown in Section 7 — the Portal's
    Application Settings grid does not accept a literal colon in the name.
-3. For the three secret values (`SharePoint:ClientSecret`,
-   `Cloudinary:ApiSecret`, `Email:SmtpPassword`), prefer a Key Vault
-   reference instead of a plain value:
-   - First complete **Section 16.2a** below to grant the Function App
-     access to your Key Vault.
-   - Then set the value to:
+3. For the three secret values, set the setting's **value** to a Key Vault
+   reference pointing at the matching secret created in Step 5, instead of
+   a plain value:
 
-     ```text
-     @Microsoft.KeyVault(SecretUri=https://<vault-name>.vault.azure.net/secrets/<secret-name>/)
-     ```
+   | Application setting name     | Value                                                                              |
+   | ---------------------------------| ---------------------------------------------------------------------------------------|
+   | `SharePoint__ClientSecret`     | `@Microsoft.KeyVault(SecretUri=https://kv-fboutlet-housekeep.vault.azure.net/secrets/SharePoint-ClientSecret/)` |
+   | `Cloudinary__ApiSecret`        | `@Microsoft.KeyVault(SecretUri=https://kv-fboutlet-housekeep.vault.azure.net/secrets/Cloudinary-ApiSecret/)`    |
+   | `Email__SmtpPassword`          | `@Microsoft.KeyVault(SecretUri=https://kv-fboutlet-housekeep.vault.azure.net/secrets/Email-SmtpPassword/)`      |
 
+   The **setting name** (left column) still uses the double-underscore form
+   the application's configuration binder expects; only the **value**
+   changes to a Key Vault reference. Omitting the version segment from the
+   `SecretUri` (as shown) always resolves the secret's current version.
 4. Click **Apply**, then **Confirm** to save and restart the Function App
    with the new settings.
+5. **Verify the Key Vault references resolved:** back on the Environment
+   variables / Application settings grid, each Key Vault-referenced setting
+   shows a status of **Resolved** (often with a green check) once the
+   Function App can successfully read it — this can take a minute after
+   saving. If it instead shows **Resolution error**, re-check: the role
+   assignment from Step 6 was granted to the correct managed identity, the
+   secret name in the URI exactly matches the name used in Step 5, and the
+   vault name in the URI is correct.
 
-### Step 4a — (Recommended) Grant Key Vault Access via Managed Identity
-
-1. In the Function App, go to **Settings → Identity**, switch
-   **System assigned** to **On**, **Save**. Record the generated **Object
-   (principal) ID**.
-2. In your Key Vault resource, go to **Access control (IAM) → + Add → Add
-   role assignment**, select the **Key Vault Secrets User** role, assign it
-   to the Function App's managed identity (search by the Function App's
-   name), **Review + assign**.
-3. (If the Key Vault uses the legacy **Access policies** model instead of
-   Azure RBAC): **Access policies → + Create**, grant **Get** and **List**
-   secret permissions to the Function App's managed identity.
-
-### Step 5 — Deploy the Code
+### Step 8 — Deploy the Code
 
 Choose **one** of the following; both produce the same result for a one-off
 manual deployment.
@@ -507,7 +601,7 @@ cd src/FBOutletConditionsHousekeeping.Functions
 func azure functionapp publish func-fboutlet-housekeeping-prod
 ```
 
-### Step 6 — First-Run Verification
+### Step 9 — First-Run Verification
 
 1. Confirm `Cleanup:DryRun` (`Cleanup__DryRun`) is `true`.
 2. In the Function App, go to **Functions → ReportLogCleanupFunction →
@@ -534,8 +628,11 @@ This repository includes a ready-to-use workflow,
 4. Deploys the published package to the target Function App using
    `azure/functions-action`.
 
-This requires the Function App to already exist (Section 16.2, Steps 1–4)
-before the workflow is run.
+This requires the Function App to already exist (Section 16.2, Steps 1–3)
+before the workflow is run. The workflow only deploys code — it does not
+configure Application Settings or Key Vault access — so Steps 4–7 (Key
+Vault, secrets, access, and Application Settings) should also be completed
+before relying on a real (non-dry-run) deployment, per Section 16.4.
 
 ### Step 1 — Create an Azure AD App Registration for GitHub OIDC
 
@@ -610,7 +707,7 @@ environment implicitly on first use — but without any approval gate.
    `deploy` starts.
 3. Confirm the `deploy` job's **Deploy to Azure Functions** step completes
    successfully.
-4. Perform the same first-run verification as Section 16.2 Step 6
+4. Perform the same first-run verification as Section 16.2 Step 9
    (`Cleanup:DryRun=true`, confirm the summary email, then disable DryRun).
 
 ### Troubleshooting GitHub Actions deployment
@@ -642,7 +739,7 @@ deletions until:
 2. The summary email (if `Email:EmailEnabled=true`) was reviewed and its
    eligible/would-delete counts matched expectations for the real
    SharePoint list and Cloudinary account.
-3. Only then, set `Cleanup:DryRun` to `false` (Portal: Section 16.2 Step 4;
+3. Only then, set `Cleanup:DryRun` to `false` (Portal: Section 16.2 Step 7;
    GitHub Actions: update the Function App setting directly in the Portal —
    this workflow does not manage application settings, only code
    deployment, so changing `DryRun` does not require a new deployment).
@@ -850,3 +947,4 @@ SMTP is not blocked by network/firewall rules.
 | ------- | ---------- | ---------------------------------------------------------------------- | -------------|
 | 1.0     | 2026-10-08 | Initial setup guide for new project.                                  | Claude Code |
 | 1.1     | 2026-10-08 | Added detailed Azure Portal deployment walkthrough (Section 16.2) and GitHub Actions CI/CD deployment walkthrough (Section 16.3), including the new `.github/workflows/deploy-function-app.yml` workflow; updated Sections 17, 18, 23, 24 accordingly. | Claude Code |
+| 1.2     | 2026-10-08 | Added full step-by-step Azure Key Vault creation and secret-population instructions to Section 16.2 (new Steps 4–6), renumbered the remaining Section 16.2 steps accordingly, and fixed cross-references to them elsewhere in this document. | Claude Code |
