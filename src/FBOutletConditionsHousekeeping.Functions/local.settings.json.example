@@ -1,0 +1,33 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+        "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+        "Cleanup:EntryAgeDays": "90",
+        "Cleanup:DryRun": "true",
+        "Cleanup:TimerSchedule": "0 30 2 * * *",
+        "Cleanup:MaxPageSize": "200",
+
+        "SharePoint:TenantId": "<azure-ad-tenant-id>",
+        "SharePoint:ClientId": "<app-registration-client-id>",
+        "SharePoint:ClientSecret": "<app-registration-client-secret>",
+        "SharePoint:SiteId": "<graph-site-id>",
+        "SharePoint:ListId": "<graph-list-id-for-report-log>",
+        "SharePoint:DateFieldInternalName": "Created",
+        "SharePoint:ImageUrlFieldInternalNames": "CloudinaryImageUrl1,CloudinaryImageUrl2,CloudinaryImageUrl3,CloudinaryImageUrl4,CloudinaryImageUrl5",
+
+        "Cloudinary:CloudName": "<cloudinary-cloud-name>",
+        "Cloudinary:ApiKey": "<cloudinary-api-key>",
+        "Cloudinary:ApiSecret": "<cloudinary-api-secret>",
+
+        "Email:EmailEnabled": "false",
+        "Email:EmailRecipients": "admin1@example.com,admin2@example.com",
+        "Email:EmailFromAddress": "noreply@example.com",
+        "Email:SmtpHost": "smtp.example.com",
+        "Email:SmtpPort": "587",
+        "Email:SmtpUseSsl": "false",
+        "Email:SmtpUsername": "<smtp-username>",
+        "Email:SmtpPassword": "<smtp-password>"
+    }
+}
