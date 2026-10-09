@@ -69,6 +69,12 @@ public sealed class CleanupOrchestrator : ICleanupOrchestrator
         // field compared against a day-count cutoff, not by item ID/order.
         var cutoff = runStartedAtUtc - TimeSpan.FromDays(_options.EntryAgeDays);
 
+        _logger.LogInformation(
+            "Starting cleanup run. EntryAgeDays={EntryAgeDays} CutoffUtc={CutoffUtc} DryRun={DryRun}",
+            _options.EntryAgeDays,
+            cutoff,
+            _options.DryRun);
+
         var results = new List<CleanupItemResult>();
         var scannedCount = 0;
 
@@ -101,8 +107,9 @@ public sealed class CleanupOrchestrator : ICleanupOrchestrator
             runStartedAtUtc, runEndedAtUtc, _options.DryRun, _options.EntryAgeDays, scannedCount, results);
 
         _logger.LogInformation(
-            "Cleanup run complete. DryRun={DryRun} Scanned={Scanned} Eligible={Eligible} Deleted={Deleted} Failed={Failed} Skipped={Skipped} ImagesDeleted={Images} Duration={Duration}",
+            "Cleanup run complete. DryRun={DryRun} EntryAgeDays={EntryAgeDays} Scanned={Scanned} Eligible={Eligible} Deleted={Deleted} Failed={Failed} Skipped={Skipped} ImagesDeleted={Images} Duration={Duration}",
             summary.DryRun,
+            summary.EntryAgeDays,
             summary.EntriesScanned,
             summary.EligibleCount,
             summary.DeletedCount,
