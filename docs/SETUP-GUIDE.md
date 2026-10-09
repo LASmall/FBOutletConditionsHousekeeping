@@ -1,7 +1,7 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.4
+**Version:** 1.5
 **Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
 
@@ -765,10 +765,27 @@ itself:
   mismatch error** — the federated credential's **Entity type**/**Branch**
   or **Environment name** in Azure AD (Step 1) does not match the branch or
   GitHub Environment actually running the workflow; confirm they match
-  exactly, including case.
+  exactly, including case. In particular, because the `deploy` job targets
+  the `production` GitHub Environment, GitHub issues an OIDC token whose
+  subject is `environment:production` rather than `ref:refs/heads/main` —
+  a credential scoped only to the branch will **not** match, and a second
+  federated credential scoped to `environment:production` must also exist
+  (confirmed required and added during initial setup of this project; see
+  Section 16.3 Step 1). If your organization has GitHub's "immutable
+  subject" OIDC customization enabled
+  (`/repos/{owner}/{repo}/actions/oidc/customization/sub`), the subject
+  also embeds numeric account/repo IDs instead of their names — check that
+  API response rather than assuming the plain `org/repo` form.
 - **`azure/functions-action` fails with an authorization error** — confirm
   the role assignment in Step 2 was granted on the correct resource group
   and has not expired/been removed.
+- **`azure/functions-action` fails with `InvalidPackageContentException:
+  Cannot find required .azurefunctions directory at root level`** (seen on
+  Flex Consumption plans) — `actions/upload-artifact@v4` excludes
+  dotfiles/dot-directories by default, silently dropping the `.azurefunctions`
+  directory that the `dotnet publish` output includes. Confirm the upload
+  step sets `include-hidden-files: true` (already set in this project's
+  workflow).
 - **Workflow does not trigger on push** — confirm the changed files fall
   under the `paths` filters in `.github/workflows/deploy-function-app.yml`,
   or use **Run workflow** (`workflow_dispatch`) to trigger it manually.
@@ -996,3 +1013,4 @@ SMTP is not blocked by network/firewall rules.
 | 1.2     | 2026-10-08 | Added full step-by-step Azure Key Vault creation and secret-population instructions to Section 16.2 (new Steps 4–6), renumbered the remaining Section 16.2 steps accordingly, and fixed cross-references to them elsewhere in this document. | Claude Code |
 | 1.3     | 2026-10-08 | Added the confirmed Cloudinary upload preset (`crane_fb`) and asset folder (`crane_fb/images`) to Section 13 as administrator reference. | Claude Code |
 | 1.4     | 2026-10-09 | Removed a duplicate Azure Portal Deployment Center–generated workflow that had been committed to `.github/workflows/`; documented how to disconnect Deployment Center and reuse its already-created App Registration/federated credential with the project's own workflow instead (Section 16.2 Step 8, Section 16.3 Steps 1–3). | Claude Code |
+| 1.5     | 2026-10-09 | Documented two real deployment failures found and fixed during first live workflow run: (1) a federated credential is required for the `environment:production` OIDC subject, not just the branch; (2) `actions/upload-artifact` silently drops the `.azurefunctions` directory required by Flex Consumption plans unless `include-hidden-files: true` is set (Section 16.3 troubleshooting). | Claude Code |

@@ -63,6 +63,11 @@ jobs:
           name: function-app-package
           path: ${{ env.PUBLISH_OUTPUT_PATH }}
           retention-days: 7
+          # actions/upload-artifact excludes dotfiles/dot-directories by
+          # default, which would silently drop the required .azurefunctions
+          # directory (needed by Flex Consumption plan deployment) from the
+          # artifact — see docs/SETUP-GUIDE.md Section 16.3 troubleshooting.
+          include-hidden-files: true
 
   deploy:
     needs: build-and-test
