@@ -1,9 +1,9 @@
 # Architecture Document
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Active
-**Last Updated:** 2026-10-08
+**Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
 
 ---
@@ -685,16 +685,13 @@ regulatory compliance requirement has been identified for this project.
 | ADR-004 | Process eligible entries sequentially within a run (no parallelism). | Simplicity and predictable ordering/logging for the expected daily volume; documented as a future enhancement if volume grows. | 2026-10-08 |
 | ADR-005 | Perform age-eligibility filtering client-side after retrieving list items, rather than via a Graph server-side `$filter`. | The target list's date field indexing status cannot be guaranteed in advance; client-side filtering works reliably regardless of indexing, at some efficiency cost for very large lists. | 2026-10-08 |
 | ADR-006 | Use GitHub Actions with Azure AD OIDC federated credentials (not a stored publish profile or client secret) for CI/CD deployment authentication. | Avoids storing any long-lived Azure credential in GitHub; GitHub issues a short-lived token per workflow run, consistent with the least-privilege/secure-by-default principles already applied elsewhere in this project (Section 3). | 2026-10-08 |
+| ADR-007 | Reuse the user-assigned managed identity (`oidc-msi-a7ef`) that Azure Portal's Deployment Center had already created and granted `Website Contributor` on the Function App, rather than creating a second, separate App Registration for the project's own GitHub Actions workflow. | Avoids a redundant identity with its own role assignment to manage; the existing identity's federated credential model works identically for both use cases — it only needed a second federated credential added (ADR-008) to also match the workflow's actual OIDC subject. | 2026-10-09 |
+| ADR-008 | Register a second federated credential on that managed identity, scoped to subject `environment:production`, in addition to the existing `ref:refs/heads/main`-scoped one. | GitHub Actions emits a different OIDC token subject when a job declares a `environment:`, as the `deploy` job does — confirmed empirically when the first live run failed `azure/login` with only the branch-scoped credential in place; both credentials now coexist so either trigger path authenticates successfully. | 2026-10-09 |
 
 ---
 
 # 25. Known Architectural Limitations
 
-- The GitHub Actions CI/CD pipeline (Section 6.8) has been created and its
-  workflow YAML validated for syntax, but it has not yet been executed
-  end-to-end against a real Azure subscription/GitHub repository in this
-  environment (no live Azure OIDC credentials or GitHub remote were
-  available) — see `docs/SETUP-GUIDE.md` Section 24.
 - No custom retry/circuit-breaker policies are layered on top of the Graph,
   Cloudinary, or MailKit SDK defaults.
 - No VNet/private networking has been configured; the Function App uses
@@ -715,8 +712,6 @@ regulatory compliance requirement has been identified for this project.
   client-secret rotation burden.
 - Introduce bounded concurrency for processing eligible entries if daily
   volume grows substantially.
-- Execute the GitHub Actions workflow end-to-end against a real Azure
-  subscription once one is available, and address any findings.
 - Add Dev/Test/Staging environment promotion if the organization requires
   it, including a corresponding GitHub Actions environment/approval stage
   per environment.
@@ -729,3 +724,4 @@ regulatory compliance requirement has been identified for this project.
 | ------- | ---------- | -------------------------------------------------------------------------| -------------|
 | 1.0     | 2026-10-08 | Initial architecture for new project.                                   | Claude Code |
 | 1.1     | 2026-10-08 | Documented the GitHub Actions CI/CD pipeline (Section 6.8, ADR-006) and expanded the deployment architecture (Section 19) to cover both GitHub Actions and Azure Portal/CLI deployment paths. | Claude Code |
+| 1.2     | 2026-10-09 | Recorded ADR-007/ADR-008 (reused managed identity, added environment-scoped federated credential) following the first successful live deployment via GitHub Actions; removed the now-resolved "not yet executed end-to-end" limitation and future consideration. | Claude Code |

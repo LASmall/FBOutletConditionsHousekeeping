@@ -1,7 +1,7 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.5
+**Version:** 1.6
 **Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
 
@@ -991,16 +991,16 @@ SMTP is not blocked by network/firewall rules.
 - [ ] Monitoring configured — Application Insights wiring is in place; alert rules are an administrator action, not yet configured.
 - [x] Backup configured — not applicable (no application-owned data store).
 - [x] Security reviewed (Section 22).
-- [ ] Deployment process tested — both the Azure Portal (Section 16.2) and GitHub Actions (Section 16.3) deployment procedures are documented, and the workflow YAML was validated for syntax, but neither has been executed against a real Azure subscription/GitHub repository in this environment (no live Azure subscription or GitHub remote was available).
+- [x] Deployment process tested — the GitHub Actions workflow (Section 16.3) was executed end-to-end against the real Azure subscription and Function App (`fb-outlet-condition-retention-func`) on 2026-10-09: build, test, publish, OIDC login, and deploy all succeeded, and the deployed `ReportLogCleanupFunction` was confirmed registered and enabled. The Azure Portal manual path (Section 16.2) remains documented but was not separately re-exercised, since the GitHub Actions path is this project's primary deployment method.
 - [x] Documentation updated (this change set).
 
 ---
 
 # 24. Known Deployment Limitations
 
-- The GitHub Actions workflow (`.github/workflows/deploy-function-app.yml`) has been validated for YAML syntax only; it has not yet been executed end-to-end against a real Azure subscription/Function App in this environment (no live Azure OIDC credentials or GitHub remote were available).
+- The GitHub Actions workflow (`.github/workflows/deploy-function-app.yml`) has been executed end-to-end successfully against the real Azure subscription and Function App on 2026-10-09 (see Section 23).
 - Only a single (production) environment is described; no Dev/Test/Staging promotion path exists.
-- Live end-to-end verification against a real SharePoint tenant, Cloudinary account, and SMTP server has not been performed — see `docs/SPECIFICATION.md` Section 23.
+- Live end-to-end verification of the *application's own* integrations — a real SharePoint tenant, Cloudinary account, and SMTP server — has not been performed; this is distinct from the deployment pipeline itself, which has now been verified. See `docs/SPECIFICATION.md` Section 23.
 
 ---
 
@@ -1014,3 +1014,4 @@ SMTP is not blocked by network/firewall rules.
 | 1.3     | 2026-10-08 | Added the confirmed Cloudinary upload preset (`crane_fb`) and asset folder (`crane_fb/images`) to Section 13 as administrator reference. | Claude Code |
 | 1.4     | 2026-10-09 | Removed a duplicate Azure Portal Deployment Center–generated workflow that had been committed to `.github/workflows/`; documented how to disconnect Deployment Center and reuse its already-created App Registration/federated credential with the project's own workflow instead (Section 16.2 Step 8, Section 16.3 Steps 1–3). | Claude Code |
 | 1.5     | 2026-10-09 | Documented two real deployment failures found and fixed during first live workflow run: (1) a federated credential is required for the `environment:production` OIDC subject, not just the branch; (2) `actions/upload-artifact` silently drops the `.azurefunctions` directory required by Flex Consumption plans unless `include-hidden-files: true` is set (Section 16.3 troubleshooting). | Claude Code |
+| 1.6     | 2026-10-09 | Updated Sections 23/24 to reflect the first successful live deployment via GitHub Actions against the production Function App (`fb-outlet-condition-retention-func`); the deployment pipeline is no longer an untested known limitation. | Claude Code |
