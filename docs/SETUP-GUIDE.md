@@ -1,8 +1,8 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.3
-**Last Updated:** 2026-10-08
+**Version:** 1.4
+**Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
 
 ---
@@ -589,6 +589,33 @@ manual deployment.
    you only want the Portal to record the deployment source without
    generating a workflow.
 
+**If Deployment Center already generated its own workflow file** (e.g. a
+file named `.github/workflows/main_<function-app-name>.yml` appears in the
+repository after connecting it): this duplicates — and conflicts with —
+the project's own workflow, since both trigger on every push to `main` and
+the generated one skips the test gate entirely. Clean this up as follows:
+
+1. Delete the generated workflow file from the repository (keep only
+   `.github/workflows/deploy-function-app.yml`).
+2. In the Function App, go to **Deployment → Deployment Center → ⋯ →
+   Disconnect**. This stops the Portal from owning/regenerating a workflow
+   file; it does not delete anything already deployed. Ongoing deployments
+   are now handled solely by the project's own workflow (Section 16.3).
+3. The Deployment Center setup already created an App Registration with a
+   federated credential and granted it access — visible as GitHub secrets
+   named like `AZUREAPPSERVICE_CLIENTID_...`,
+   `AZUREAPPSERVICE_TENANTID_...`, and
+   `AZUREAPPSERVICE_SUBSCRIPTIONID_...`. Rather than creating a second App
+   Registration, you can reuse these: in **Settings → Secrets and
+   variables → Actions**, add new secrets named `AZURE_CLIENT_ID`,
+   `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` with the **same values**
+   as those existing `AZUREAPPSERVICE_*` secrets (Section 16.3's own Step 1
+   only needs to be followed if you'd rather create a fresh, dedicated
+   App Registration instead).
+4. Set the `AZURE_FUNCTIONAPP_NAME` repository **variable** to the
+   Function App's actual name (visible in the deleted generated workflow's
+   `app-name:` value, or in the Portal's Overview page).
+
 **Option B — Zip deploy via Azure CLI (no Git integration required):**
 
 ```text
@@ -645,6 +672,12 @@ before relying on a real (non-dry-run) deployment, per Section 16.4.
 
 ### Step 1 — Create an Azure AD App Registration for GitHub OIDC
 
+**Already used the Azure Portal's Deployment Center (Section 16.2 Step 8,
+Option A) and cleaned up its generated workflow?** It already created an
+App Registration and federated credential for you — skip to the "already
+used Deployment Center" bullet under Section 16.2 Step 8 instead of
+repeating this step.
+
 1. In **Microsoft Entra ID → App registrations → New registration**, name
    it e.g. `github-fboutlet-housekeeping-deploy`, single tenant, no
    redirect URI. **Register**.
@@ -665,6 +698,10 @@ before relying on a real (non-dry-run) deployment, per Section 16.4.
    GitHub Actions obtain a short-lived Azure AD token for each run instead.
 
 ### Step 2 — Grant the App Registration Access to the Resource Group
+
+**Reusing the App Registration Deployment Center already created?** It was
+already granted the access it needed to deploy to the Function App — skip
+this step.
 
 1. Open the resource group created in Section 16.2 Step 1.
 2. **Access control (IAM) → + Add → Add role assignment**.
@@ -691,7 +728,7 @@ Actions**:
 
 | Name                        | Value                                                          |
 | ------------------------------| ------------------------------------------------------------------|
-| `AZURE_FUNCTIONAPP_NAME`     | The Function App name created in Section 16.2 Step 3 (e.g. `func-fboutlet-housekeeping-prod`). |
+| `AZURE_FUNCTIONAPP_NAME`     | The Function App name created in Section 16.2 Step 3 (e.g. `func-fboutlet-housekeeping-prod`), or the name of the already-existing Function App if reusing one provisioned via Deployment Center. |
 
 ### Step 4 — Create the `production` GitHub Environment (Recommended)
 
@@ -958,3 +995,4 @@ SMTP is not blocked by network/firewall rules.
 | 1.1     | 2026-10-08 | Added detailed Azure Portal deployment walkthrough (Section 16.2) and GitHub Actions CI/CD deployment walkthrough (Section 16.3), including the new `.github/workflows/deploy-function-app.yml` workflow; updated Sections 17, 18, 23, 24 accordingly. | Claude Code |
 | 1.2     | 2026-10-08 | Added full step-by-step Azure Key Vault creation and secret-population instructions to Section 16.2 (new Steps 4–6), renumbered the remaining Section 16.2 steps accordingly, and fixed cross-references to them elsewhere in this document. | Claude Code |
 | 1.3     | 2026-10-08 | Added the confirmed Cloudinary upload preset (`crane_fb`) and asset folder (`crane_fb/images`) to Section 13 as administrator reference. | Claude Code |
+| 1.4     | 2026-10-09 | Removed a duplicate Azure Portal Deployment Center–generated workflow that had been committed to `.github/workflows/`; documented how to disconnect Deployment Center and reuse its already-created App Registration/federated credential with the project's own workflow instead (Section 16.2 Step 8, Section 16.3 Steps 1–3). | Claude Code |
