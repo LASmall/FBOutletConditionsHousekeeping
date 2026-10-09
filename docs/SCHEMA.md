@@ -1,7 +1,7 @@
 # Data Schema Documentation
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Active
 **Last Updated:** 2026-10-08
 **Document Owner:** Leon Small
@@ -143,7 +143,7 @@ runtime by parsing the stored delivery URL (see Section 17 /
 
 | Field       | Data Type | Required | Default | Description                                                        |
 | -------------| ------------| ----------| ---------| ---------------------------------------------------------------------|
-| `PublicId`  | string    | Yes      | n/a     | Cloudinary asset identifier, parsed from the stored delivery URL's path (the path segment(s) after the version/transformation segment, with the file extension removed). |
+| `PublicId`  | string    | Yes      | n/a     | Cloudinary asset identifier, parsed from the stored delivery URL's path (the path segment(s) after the version/transformation segment, with the file extension removed). Confirmed for the production account (Dynamic Folder Mode, asset folder `crane_fb/images`) to be a bare identifier with no folder prefix — see Section 17. |
 
 ### Constraints
 
@@ -283,11 +283,36 @@ Cloudinary `public_id`-parsing logic, implemented in
 `FBOutletConditionsHousekeeping.Core` (e.g.,
 `CloudinaryPublicIdParser.TryParse(Uri imageUrl, out string publicId)`),
 which extracts the asset identifier from a Cloudinary delivery URL of the
-general form:
+general (assumed, Fixed Folder Mode) form:
 
 ```text
 https://res.cloudinary.com/<cloud_name>/image/upload/[<transformations>/][v<version>/]<folder>/<public_id>.<extension>
 ```
+
+**Confirmed production format:** this project's Cloudinary account uploads
+through the preset `crane_fb` into the asset folder `crane_fb/images`, and
+uses **Dynamic Folder Mode** — confirmed from a real delivery URL supplied
+during development:
+
+```text
+https://res.cloudinary.com/uato64es/image/upload/v1791143756/vrpo8zoiwhxmfpbgue2n.jpg
+```
+
+Note that `crane_fb/images` does **not** appear anywhere in this URL. In
+Dynamic Folder Mode, the asset folder is a Cloudinary Console
+display/organizational grouping stored as a separate field from
+`public_id` — it is not embedded in the delivery URL and is not required
+to delete the asset. The bare segment after the version
+(`vrpo8zoiwhxmfpbgue2n`) is the actual `public_id`, and this is exactly
+what `CloudinaryPublicIdParser` extracts and what
+`CloudinaryImageService` passes to `Cloudinary.DestroyAsync`. This
+confirmed example is covered by an explicit unit test case (TEST-010,
+`CloudinaryPublicIdParserTests.cs`).
+
+Administrators who want to visually confirm a deletion in the Cloudinary
+Console should look under **Media Library → `crane_fb/images`** — the
+folder remains a useful organizational view even though it plays no role
+in how this application identifies or deletes an asset.
 
 ---
 
@@ -474,6 +499,15 @@ must supply the real internal names for `SharePoint:DateFieldInternalName`
 and `SharePoint:ImageUrlFieldInternalNames` for the function to operate
 correctly against the real list.
 
+**Cloudinary URL format — now confirmed:** unlike the SharePoint caveat
+above, the Cloudinary delivery URL/`public_id` format has been confirmed
+against a real example from the production account (upload preset
+`crane_fb`, asset folder `crane_fb/images`, Dynamic Folder Mode) — see
+Section 17. This confirms the URL *shape* `CloudinaryPublicIdParser`
+expects; it is not the same claim as having executed a live `Destroy` call
+against the account, which remains untested — see `docs/SPECIFICATION.md`
+Section 23 (Known Limitations).
+
 ---
 
 # 30. Schema Change History
@@ -481,3 +515,4 @@ correctly against the real list.
 | Version | Date       | Change                              | Author      |
 | ------- | ---------- | --------------------------------------| -------------|
 | 1.0     | 2026-10-08 | Initial schema documentation for new project. | Claude Code |
+| 1.1     | 2026-10-08 | Confirmed the Cloudinary delivery URL / `public_id` format against a real production example (Dynamic Folder Mode, upload preset `crane_fb`, asset folder `crane_fb/images`); updated Sections 5.2, 17, and 29 accordingly. | Claude Code |

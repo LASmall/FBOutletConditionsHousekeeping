@@ -1,7 +1,7 @@
 # Functional Specification
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Active
 **Last Updated:** 2026-10-08
 **Document Owner:** Leon Small
@@ -506,7 +506,7 @@ is visible in monitoring.
 | TEST-007  | Summary email is sent with correct counts when `EmailEnabled = true`.         | Unit  | PASS |
 | TEST-008  | Failure email is sent when the orchestrator run throws.                      | Unit  | PASS |
 | TEST-009  | No email is sent (summary or failure) when `EmailEnabled = false`.           | Unit  | PASS |
-| TEST-010  | Cloudinary `public_id` is correctly parsed from a representative Cloudinary delivery URL. | Unit | PASS |
+| TEST-010  | Cloudinary `public_id` is correctly parsed from representative Cloudinary delivery URLs, including a confirmed real-world production example (Dynamic Folder Mode account, see `docs/SCHEMA.md` Section 17). | Unit | PASS |
 | TEST-011  | Timer schedule constant is configured as `0 30 2 * * *` (02:30 daily).        | Unit  | PASS |
 
 All tests listed above were implemented using xUnit and Moq and were actually
@@ -558,3 +558,4 @@ These are not currently implemented:
 | Version | Date       | Change                                   | Author      |
 | ------- | ---------- | ------------------------------------------| -------------|
 | 1.0     | 2026-10-08 | Initial specification for new project.    | Claude Code |
+| 1.1     | 2026-10-08 | Updated TEST-010's description to reflect the new confirmed real-world Cloudinary URL test case (see docs/SCHEMA.md Section 17). | Claude Code |

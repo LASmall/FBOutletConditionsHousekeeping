@@ -1,7 +1,7 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.2
+**Version:** 1.3
 **Last Updated:** 2026-10-08
 **Document Owner:** Leon Small
 
@@ -277,6 +277,15 @@ this file — use placeholders as shown in Section 6.
 - **Cloudinary:** create (or reuse) an API key/secret pair scoped to the
   cloud that hosts the images referenced by Report Log entries; record as
   `Cloudinary:CloudName` / `Cloudinary:ApiKey` / `Cloudinary:ApiSecret`.
+  For this project, images are uploaded upstream (outside this
+  application's scope) through the **`crane_fb`** upload preset into the
+  **`crane_fb/images`** asset folder. The account uses Dynamic Folder
+  Mode, so that asset folder is a Cloudinary Console organizational
+  grouping only — it is not part of the delivery URL or the `public_id`
+  this application uses to delete an image (see `docs/SCHEMA.md` Section
+  17). No configuration setting is needed for the asset folder; it is
+  listed here purely as a reference for administrators who want to browse
+  **Media Library → `crane_fb/images`** to visually confirm a deletion.
 - **SMTP:** create (or reuse) an account/app password authorized to send
   mail through the organization's SMTP relay; record as
   `Email:SmtpUsername` / `Email:SmtpPassword`. Some providers (e.g.
@@ -948,3 +957,4 @@ SMTP is not blocked by network/firewall rules.
 | 1.0     | 2026-10-08 | Initial setup guide for new project.                                  | Claude Code |
 | 1.1     | 2026-10-08 | Added detailed Azure Portal deployment walkthrough (Section 16.2) and GitHub Actions CI/CD deployment walkthrough (Section 16.3), including the new `.github/workflows/deploy-function-app.yml` workflow; updated Sections 17, 18, 23, 24 accordingly. | Claude Code |
 | 1.2     | 2026-10-08 | Added full step-by-step Azure Key Vault creation and secret-population instructions to Section 16.2 (new Steps 4–6), renumbered the remaining Section 16.2 steps accordingly, and fixed cross-references to them elsewhere in this document. | Claude Code |
+| 1.3     | 2026-10-08 | Added the confirmed Cloudinary upload preset (`crane_fb`) and asset folder (`crane_fb/images`) to Section 13 as administrator reference. | Claude Code |

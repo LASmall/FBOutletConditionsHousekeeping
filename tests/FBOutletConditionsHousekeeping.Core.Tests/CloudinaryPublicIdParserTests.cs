@@ -19,6 +19,14 @@ public sealed class CloudinaryPublicIdParserTests
     [InlineData(
         "https://res.cloudinary.com/demo/image/upload/c_fill,w_200/v1690000000/reports/entry-789-2.jpg",
         "reports/entry-789-2")]
+    [InlineData(
+        // Confirmed real-world production format: Dynamic Folder Mode account
+        // (upload preset "crane_fb", asset folder "crane_fb/images") — the
+        // asset folder is a Cloudinary Console organizational grouping only
+        // and is NOT embedded in the delivery URL or the public_id (see
+        // docs/SCHEMA.md Section 17).
+        "https://res.cloudinary.com/uato64es/image/upload/v1791143756/vrpo8zoiwhxmfpbgue2n.jpg",
+        "vrpo8zoiwhxmfpbgue2n")]
     public void TryParse_ValidCloudinaryUrl_ExtractsPublicId(string url, string expectedPublicId)
     {
         var parsed = CloudinaryPublicIdParser.TryParse(url, out var publicId);
