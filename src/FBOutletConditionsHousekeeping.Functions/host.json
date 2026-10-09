@@ -1,6 +1,6 @@
 {
     "version": "2.0",
-    "telemetryMode": "OpenTelemetry",
+    "telemetryMode": "applicationInsights",
     "logging": {
         "logLevel": {
             "default": "Information"

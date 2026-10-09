@@ -1,7 +1,7 @@
 # Setup and Deployment Guide
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.6
+**Version:** 1.7
 **Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
 
@@ -864,9 +864,18 @@ normal ongoing changes).
 
 # 19. Monitoring
 
-- **Application logging:** `ILogger` output flows to Application Insights
-  via the Azure Functions Worker's OpenTelemetry integration (enabled
-  automatically when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set).
+- **Application logging:** `ILogger` output and per-invocation request
+  telemetry (for every trigger type, including the timer trigger) flow to
+  Application Insights automatically via the Functions host's built-in
+  classic Application Insights integration (`host.json`
+  `"telemetryMode": "applicationInsights"`), as long as
+  `APPLICATIONINSIGHTS_CONNECTION_STRING` is set. An earlier
+  OpenTelemetry-based telemetry mode was tried and reverted after a live
+  run showed 0 invocations in the Portal's **Monitor → Invocations** blade
+  despite the function executing and sending its summary email
+  successfully — the custom OpenTelemetry wiring only configured tracing,
+  never logging, and did not produce invocation telemetry for the timer
+  trigger. See `docs/ARCHITECTURE.md` ADR-009.
 - **Metrics/alerting:** standard Azure Functions/Application Insights
   monitoring (invocation count, failures, duration); no custom alert rules
   are created by this change — configure these in the Azure Portal per
@@ -886,6 +895,39 @@ Not applicable — this application owns no persistent data store. See
 ---
 
 # 21. Troubleshooting
+
+## Problem: The function runs and sends its summary email, but Azure Portal's Monitor → Invocations shows 0 Success Count / 0 Error Count
+
+**Symptoms:**
+
+The cleanup run clearly executed (the email arrives with correct counts),
+but the Function App's **Monitor → Invocations and more** blade shows
+nothing, and querying Application Insights directly shows no `requests`
+telemetry for `ReportLogCleanupFunction` (only host/Kudu admin API calls
+like `/admin/functions/.../keys` appear as requests).
+
+**Cause:**
+
+`host.json`'s `telemetryMode` was set to `"OpenTelemetry"`, with a custom
+OpenTelemetry pipeline wired up in `Program.cs`. That custom pipeline only
+configured the tracing signal, never the logging signal, and did not
+produce invocation-level (`request`) telemetry for the timer trigger —
+so neither `ILogger` output nor invocation success/failure ever reached
+Application Insights, even though `APPLICATIONINSIGHTS_CONNECTION_STRING`
+was correctly configured.
+
+**Resolution:**
+
+Set `host.json`'s `"telemetryMode"` to `"applicationInsights"` (the
+classic, non-OpenTelemetry mode) and remove any custom OpenTelemetry
+wiring from `Program.cs`. In this mode, the Functions host itself
+automatically records a request for every invocation (any trigger type)
+and forwards `ILogger` output, with no application code required beyond
+the `APPLICATIONINSIGHTS_CONNECTION_STRING` setting. This project reverted
+to classic mode for exactly this reason — see `docs/ARCHITECTURE.md`
+ADR-009.
+
+---
 
 ## Problem: Every run fails immediately with an authentication error
 
@@ -975,7 +1017,7 @@ SMTP is not blocked by network/firewall rules.
 - [x] Least-privilege permissions applied where tenant policy allows (site-scoped Graph access recommended, Section 12 step 6).
 - [x] HTTPS/TLS enabled for all external calls (Graph, Cloudinary, SMTP over TLS).
 - [x] Dependencies reviewed (only official NuGet packages used — Microsoft.Graph, Azure.Identity, CloudinaryDotNet, MailKit).
-- [x] Logging configured (Application Insights via OpenTelemetry).
+- [x] Logging configured (Application Insights via the Functions host's classic telemetry mode; confirmed working via a live invocation showing up in Monitor → Invocations).
 - [x] Sensitive data protected (secrets never logged; Key Vault recommended for storage).
 - [ ] Production configuration secured — **pending administrator action**: configure real Key Vault references in the target Azure Function App before go-live.
 
@@ -1015,3 +1057,4 @@ SMTP is not blocked by network/firewall rules.
 | 1.4     | 2026-10-09 | Removed a duplicate Azure Portal Deployment Center–generated workflow that had been committed to `.github/workflows/`; documented how to disconnect Deployment Center and reuse its already-created App Registration/federated credential with the project's own workflow instead (Section 16.2 Step 8, Section 16.3 Steps 1–3). | Claude Code |
 | 1.5     | 2026-10-09 | Documented two real deployment failures found and fixed during first live workflow run: (1) a federated credential is required for the `environment:production` OIDC subject, not just the branch; (2) `actions/upload-artifact` silently drops the `.azurefunctions` directory required by Flex Consumption plans unless `include-hidden-files: true` is set (Section 16.3 troubleshooting). | Claude Code |
 | 1.6     | 2026-10-09 | Updated Sections 23/24 to reflect the first successful live deployment via GitHub Actions against the production Function App (`fb-outlet-condition-retention-func`); the deployment pipeline is no longer an untested known limitation. | Claude Code |
+| 1.7     | 2026-10-09 | Bug fix: documented the Application Insights invocation-visibility defect (Section 19, Section 21 new troubleshooting entry, Section 22 checklist) found live — 0 invocations shown despite successful runs — and its resolution (revert to classic telemetry mode, see docs/ARCHITECTURE.md ADR-009). | Claude Code |

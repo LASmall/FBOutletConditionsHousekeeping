@@ -1,7 +1,7 @@
 # Architecture Document
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.2
+**Version:** 1.3
 **Status:** Active
 **Last Updated:** 2026-10-09
 **Document Owner:** Leon Small
@@ -228,8 +228,8 @@ Describe:
 
 ## 6.9 Monitoring and Logging
 
-- **Application logging:** `Microsoft.Extensions.Logging.ILogger`, flowing to Azure Application Insights via the Azure Functions Worker's built-in integration.
-- **Monitoring/alerting:** standard Azure Functions/Application Insights monitoring (failure count, invocation duration); no custom alert rules are created by this change.
+- **Application logging:** `Microsoft.Extensions.Logging.ILogger`, flowing to Azure Application Insights via the Functions host's built-in classic telemetry mode (`host.json` `"telemetryMode": "applicationInsights"` — see ADR-009), requiring no custom instrumentation code.
+- **Monitoring/alerting:** standard Azure Functions/Application Insights monitoring (failure count, invocation duration); confirmed working via a live invocation appearing in Monitor → Invocations after ADR-009. No custom alert rules are created by this change.
 - **Audit logging:** see `docs/SPECIFICATION.md` Section 16.
 
 ---
@@ -687,6 +687,7 @@ regulatory compliance requirement has been identified for this project.
 | ADR-006 | Use GitHub Actions with Azure AD OIDC federated credentials (not a stored publish profile or client secret) for CI/CD deployment authentication. | Avoids storing any long-lived Azure credential in GitHub; GitHub issues a short-lived token per workflow run, consistent with the least-privilege/secure-by-default principles already applied elsewhere in this project (Section 3). | 2026-10-08 |
 | ADR-007 | Reuse the user-assigned managed identity (`oidc-msi-a7ef`) that Azure Portal's Deployment Center had already created and granted `Website Contributor` on the Function App, rather than creating a second, separate App Registration for the project's own GitHub Actions workflow. | Avoids a redundant identity with its own role assignment to manage; the existing identity's federated credential model works identically for both use cases — it only needed a second federated credential added (ADR-008) to also match the workflow's actual OIDC subject. | 2026-10-09 |
 | ADR-008 | Register a second federated credential on that managed identity, scoped to subject `environment:production`, in addition to the existing `ref:refs/heads/main`-scoped one. | GitHub Actions emits a different OIDC token subject when a job declares a `environment:`, as the `deploy` job does — confirmed empirically when the first live run failed `azure/login` with only the branch-scoped credential in place; both credentials now coexist so either trigger path authenticates successfully. | 2026-10-09 |
+| ADR-009 | Revert `host.json`'s `telemetryMode` from `"OpenTelemetry"` to the classic `"applicationInsights"` mode, and remove the corresponding custom OpenTelemetry wiring (and NuGet packages) from `Program.cs`. | A live run on the real Function App sent its summary email successfully but produced zero invocation telemetry in Application Insights (confirmed via direct KQL query: no `requests` and no `traces` for the function at all, only host/Kudu admin calls). The custom OpenTelemetry pipeline only configured tracing, never logging, and did not instrument the timer trigger's invocations. Classic mode is Azure Functions' long-standing, fully-supported default and requires no application code — the host instruments every trigger type and forwards `ILogger` output automatically. | 2026-10-09 |
 
 ---
 
@@ -725,3 +726,4 @@ regulatory compliance requirement has been identified for this project.
 | 1.0     | 2026-10-08 | Initial architecture for new project.                                   | Claude Code |
 | 1.1     | 2026-10-08 | Documented the GitHub Actions CI/CD pipeline (Section 6.8, ADR-006) and expanded the deployment architecture (Section 19) to cover both GitHub Actions and Azure Portal/CLI deployment paths. | Claude Code |
 | 1.2     | 2026-10-09 | Recorded ADR-007/ADR-008 (reused managed identity, added environment-scoped federated credential) following the first successful live deployment via GitHub Actions; removed the now-resolved "not yet executed end-to-end" limitation and future consideration. | Claude Code |
+| 1.3     | 2026-10-09 | Bug fix: recorded ADR-009 reverting `host.json` telemetry mode from OpenTelemetry to classic Application Insights, after a live run showed zero invocation telemetry despite the function executing successfully; updated Section 6.9 accordingly. | Claude Code |
