@@ -56,7 +56,6 @@ jobs:
           dotnet publish ${{ env.FUNCTIONAPP_PROJECT_PATH }}
           --configuration Release
           --output ${{ env.PUBLISH_OUTPUT_PATH }}
-          --no-build=false
 
       - name: Upload deployment artifact
         uses: actions/upload-artifact@v4
