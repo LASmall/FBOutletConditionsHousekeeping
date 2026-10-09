@@ -62,7 +62,7 @@ FBOutletConditionsHousekeeping.slnx
 │   │   └── Services/                                # SharePoint/Cloudinary/Email service interfaces + implementations, CleanupOrchestrator
 │   └── FBOutletConditionsHousekeeping.Functions/    # Azure Functions isolated-worker host (timer trigger + DI wiring)
 ├── tests/
-│   └── FBOutletConditionsHousekeeping.Core.Tests/   # xUnit + Moq unit tests (23 tests, all mocked — no live services required)
+│   └── FBOutletConditionsHousekeeping.Core.Tests/   # xUnit + Moq unit tests (25 tests, all mocked — no live services required)
 ├── .github/workflows/deploy-function-app.yml        # CI/CD: build → test → deploy (Azure OIDC, no stored secrets)
 └── docs/
     ├── ARCHITECTURE.md        # Technology stack, architecture decisions, diagrams
@@ -146,11 +146,12 @@ any environment.
 dotnet test FBOutletConditionsHousekeeping.slnx
 ```
 
-23 unit tests cover: age-based eligibility, the Cloudinary-before-SharePoint
+25 unit tests cover: age-based eligibility, the Cloudinary-before-SharePoint
 deletion ordering rule, partial-failure isolation, dry-run behavior,
-summary/failure email content and the email-enabled/disabled switch, and
-Cloudinary `public_id` parsing. See `docs/SPECIFICATION.md` Section 22 for
-the full test-to-requirement traceability.
+summary/failure email content (including run duration, age threshold, and
+branding) and the email-enabled/disabled switch, and Cloudinary `public_id`
+parsing. See `docs/SPECIFICATION.md` Section 22 for the full
+test-to-requirement traceability.
 
 Live end-to-end testing against a real SharePoint tenant, Cloudinary
 account, and SMTP server has not been performed — see

@@ -96,17 +96,20 @@ public sealed class CleanupOrchestrator : ICleanupOrchestrator
             results.Add(await ProcessEligibleEntryAsync(entry, cancellationToken).ConfigureAwait(false));
         }
 
-        var summary = new CleanupSummary(runStartedAtUtc, _options.DryRun, scannedCount, results);
+        var runEndedAtUtc = _timeProvider.GetUtcNow();
+        var summary = new CleanupSummary(
+            runStartedAtUtc, runEndedAtUtc, _options.DryRun, _options.EntryAgeDays, scannedCount, results);
 
         _logger.LogInformation(
-            "Cleanup run complete. DryRun={DryRun} Scanned={Scanned} Eligible={Eligible} Deleted={Deleted} Failed={Failed} Skipped={Skipped} ImagesDeleted={Images}",
+            "Cleanup run complete. DryRun={DryRun} Scanned={Scanned} Eligible={Eligible} Deleted={Deleted} Failed={Failed} Skipped={Skipped} ImagesDeleted={Images} Duration={Duration}",
             summary.DryRun,
             summary.EntriesScanned,
             summary.EligibleCount,
             summary.DeletedCount,
             summary.FailedCount,
             summary.SkippedCount,
-            summary.TotalImagesDeleted);
+            summary.TotalImagesDeleted,
+            summary.Duration);
 
         return summary;
     }

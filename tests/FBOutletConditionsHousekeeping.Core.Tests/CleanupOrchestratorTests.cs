@@ -195,6 +195,9 @@ public sealed class CleanupOrchestratorTests
         Assert.Equal(3, capturedSummary!.EntriesScanned);
         Assert.Equal(1, capturedSummary.DeletedCount);
         Assert.Equal(1, capturedSummary.SkippedCount);
+        Assert.Equal(90, capturedSummary.EntryAgeDays);
+        Assert.Equal(RunNow, capturedSummary.RunStartedAtUtc);
+        Assert.Equal(RunNow, capturedSummary.RunEndedAtUtc);
     }
 
     // TEST-008: a failure email is sent when the orchestrator run throws, and the

@@ -33,15 +33,15 @@ public sealed class MailKitEmailNotificationService : IEmailNotificationService
     public Task SendSummaryAsync(CleanupSummary summary, CancellationToken cancellationToken)
     {
         var subject = summary.DryRun
-            ? $"[Dry Run] Report Log Cleanup Summary - {summary.RunStartedAtUtc:yyyy-MM-dd}"
-            : $"Report Log Cleanup Summary - {summary.RunStartedAtUtc:yyyy-MM-dd}";
+            ? $"[Dry Run] F&B Outlet Conditions Cleanup Summary - {summary.RunStartedAtUtc:yyyy-MM-dd}"
+            : $"F&B Outlet Conditions Cleanup Summary - {summary.RunStartedAtUtc:yyyy-MM-dd}";
 
         return SendAsync(subject, BuildSummaryHtml(summary), cancellationToken);
     }
 
     public Task SendFailureAsync(Exception exception, DateTimeOffset runStartedAtUtc, CancellationToken cancellationToken)
     {
-        var subject = $"[FAILURE] Report Log Cleanup - {runStartedAtUtc:yyyy-MM-dd}";
+        var subject = $"[FAILURE] F&B Outlet Conditions Cleanup - {runStartedAtUtc:yyyy-MM-dd}";
         return SendAsync(subject, BuildFailureHtml(exception, runStartedAtUtc), cancellationToken);
     }
 
@@ -92,10 +92,13 @@ public sealed class MailKitEmailNotificationService : IEmailNotificationService
     {
         var sb = new StringBuilder();
         sb.Append("<html><body style=\"font-family: Segoe UI, Arial, sans-serif;\">");
-        sb.Append("<h2>Report Log Cleanup ").Append(summary.DryRun ? "(DRY RUN) " : string.Empty).Append("Summary</h2>");
+        sb.Append("<h2>F&amp;B Outlet Conditions Cleanup ").Append(summary.DryRun ? "(DRY RUN) " : string.Empty).Append("Summary</h2>");
         sb.Append("<table cellpadding=\"6\" style=\"border-collapse: collapse;\">");
         AppendRow(sb, "Run started (UTC)", summary.RunStartedAtUtc.ToString("u"));
+        AppendRow(sb, "Run ended (UTC)", summary.RunEndedAtUtc.ToString("u"));
+        AppendRow(sb, "Duration", summary.Duration.ToString(@"hh\:mm\:ss"));
         AppendRow(sb, "Dry run", summary.DryRun ? "Yes" : "No");
+        AppendRow(sb, "Age threshold (days)", summary.EntryAgeDays.ToString());
         AppendRow(sb, "Entries scanned", summary.EntriesScanned.ToString());
         AppendRow(sb, "Entries eligible", summary.EligibleCount.ToString());
         AppendRow(sb, summary.DryRun ? "Entries that would be deleted" : "Entries deleted", summary.DeletedCount.ToString());
@@ -127,7 +130,7 @@ public sealed class MailKitEmailNotificationService : IEmailNotificationService
     {
         var sb = new StringBuilder();
         sb.Append("<html><body style=\"font-family: Segoe UI, Arial, sans-serif;\">");
-        sb.Append("<h2>Report Log Cleanup &mdash; Run Failure</h2>");
+        sb.Append("<h2>F&amp;B Outlet Conditions Cleanup &mdash; Run Failure</h2>");
         sb.Append("<table cellpadding=\"6\" style=\"border-collapse: collapse;\">");
         AppendRow(sb, "Run started (UTC)", runStartedAtUtc.ToString("u"));
         AppendRow(sb, "Exception type", exception.GetType().FullName ?? exception.GetType().Name);

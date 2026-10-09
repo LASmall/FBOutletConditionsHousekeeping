@@ -312,7 +312,7 @@ Or, to run every test project in the solution:
 dotnet test FBOutletConditionsHousekeeping.slnx
 ```
 
-As of this writing, this executes 23 tests (see `docs/SPECIFICATION.md`
+As of this writing, this executes 25 tests (see `docs/SPECIFICATION.md`
 Section 22 for the mapping to TEST-001 through TEST-011), all passing.
 
 ## Integration Tests
@@ -930,7 +930,7 @@ SMTP is not blocked by network/firewall rules.
 # 23. Production Readiness Checklist
 
 - [x] Application builds successfully (`dotnet build FBOutletConditionsHousekeeping.slnx`, 0 errors/warnings).
-- [x] Tests pass (23/23 unit tests, `dotnet test`).
+- [x] Tests pass (25/25 unit tests, `dotnet test`).
 - [ ] Required configuration exists — **pending administrator action**: real tenant/site/list IDs, Cloudinary account, and SMTP credentials must be supplied (Section 6); not available in this development environment.
 - [x] Database is configured — not applicable (no application-owned database).
 - [ ] External integrations tested — **NOT TESTED** against live SharePoint/Cloudinary/SMTP in this environment; only unit-tested against mocked interfaces (see `docs/SPECIFICATION.md` Section 23).

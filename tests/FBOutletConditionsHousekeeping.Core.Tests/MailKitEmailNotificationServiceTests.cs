@@ -29,11 +29,20 @@ public sealed class MailKitEmailNotificationServiceTests
         SmtpHost = "smtp.example.com",
     };
 
-    private static CleanupSummary SampleSummary() =>
-        new(DateTimeOffset.UtcNow, DryRun: false, EntriesScanned: 5, Items:
-        [
-            new CleanupItemResult("item-1", CleanupItemStatus.Deleted, 1),
-        ]);
+    private static CleanupSummary SampleSummary()
+    {
+        var startedAtUtc = DateTimeOffset.UtcNow;
+        return new(
+            startedAtUtc,
+            RunEndedAtUtc: startedAtUtc.AddSeconds(5),
+            DryRun: false,
+            EntryAgeDays: 90,
+            EntriesScanned: 5,
+            Items:
+            [
+                new CleanupItemResult("item-1", CleanupItemStatus.Deleted, 1),
+            ]);
+    }
 
     // TEST-009: no email is sent (summary or failure) when EmailEnabled = false.
     [Fact]
@@ -88,17 +97,58 @@ public sealed class MailKitEmailNotificationServiceTests
         Assert.Equal("noreply@example.com", ((MailboxAddress)sentMessage.From.Single()).Address);
     }
 
-    // Supports AC-008/FR-009: a failure email is sent when EmailEnabled = true.
+    // Supports AC-008/FR-009: a failure email is sent when EmailEnabled = true,
+    // using the "F&B Outlet Conditions" branding rather than "Report Log".
     [Fact]
-    public async Task SendFailureAsync_EmailEnabled_InvokesTransport()
+    public async Task SendFailureAsync_EmailEnabled_InvokesTransportWithBranding()
     {
         var service = CreateService(ValidEnabledOptions());
+
+        MimeMessage? sentMessage = null;
+        _transportMock
+            .Setup(t => t.SendAsync(It.IsAny<MimeMessage>(), It.IsAny<EmailOptions>(), It.IsAny<CancellationToken>()))
+            .Callback<MimeMessage, EmailOptions, CancellationToken>((message, _, _) => sentMessage = message)
+            .Returns(Task.CompletedTask);
 
         await service.SendFailureAsync(new InvalidOperationException("Graph auth failed"), DateTimeOffset.UtcNow, CancellationToken.None);
 
         _transportMock.Verify(
             t => t.SendAsync(It.IsAny<MimeMessage>(), It.IsAny<EmailOptions>(), It.IsAny<CancellationToken>()),
             Times.Once);
+        Assert.NotNull(sentMessage);
+        Assert.Contains("F&B Outlet Conditions", sentMessage!.Subject);
+        Assert.DoesNotContain("Report Log", sentMessage.Subject);
+        var body = ((MimeKit.TextPart)sentMessage.Body!).Text;
+        Assert.Contains("F&amp;B Outlet Conditions", body);
+        Assert.DoesNotContain("Report Log", body);
+    }
+
+    // Supports AC-007/FR-013: the summary email reports the run end time,
+    // duration, and configured age threshold, and uses the "F&B Outlet
+    // Conditions" branding rather than "Report Log".
+    [Fact]
+    public async Task SendSummaryAsync_BodyAndSubject_ContainRunEndedDurationAgeThresholdAndBranding()
+    {
+        var service = CreateService(ValidEnabledOptions());
+
+        MimeMessage? sentMessage = null;
+        _transportMock
+            .Setup(t => t.SendAsync(It.IsAny<MimeMessage>(), It.IsAny<EmailOptions>(), It.IsAny<CancellationToken>()))
+            .Callback<MimeMessage, EmailOptions, CancellationToken>((message, _, _) => sentMessage = message)
+            .Returns(Task.CompletedTask);
+
+        await service.SendSummaryAsync(SampleSummary(), CancellationToken.None);
+
+        Assert.NotNull(sentMessage);
+        var body = ((MimeKit.TextPart)sentMessage!.Body!).Text;
+
+        Assert.Contains("Run ended (UTC)", body);
+        Assert.Contains("Duration", body);
+        Assert.Contains("Age threshold (days)", body);
+        Assert.Contains("90", body);
+        Assert.Contains("F&amp;B Outlet Conditions", body);
+        Assert.DoesNotContain("Report Log", body);
+        Assert.DoesNotContain("Report Log", sentMessage.Subject);
     }
 
     // When the transport itself throws (e.g. SMTP connection failure), the

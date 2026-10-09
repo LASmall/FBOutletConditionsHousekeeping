@@ -1,7 +1,7 @@
 # Functional Specification
 
 **Project:** FB Outlet Conditions Housekeeping
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Active
 **Last Updated:** 2026-10-08
 **Document Owner:** Leon Small
@@ -97,7 +97,7 @@ Explain:
 | FR-010 | The system shall not send any email when `EmailEnabled` is `false`.                                                          | Must     | US-001     |
 | FR-011 | All external credentials (SharePoint app secret, Cloudinary API secret, SMTP credentials) shall be supplied via Azure Function App configuration/Key Vault references, never hardcoded in source. | Must | US-001 |
 | FR-012 | The system shall treat an empty/missing Cloudinary image URL field as "no image to delete" and shall not treat this as a failure. | Must | US-001 |
-| FR-013 | The summary email shall report, at minimum: run timestamp, dry-run status, number of entries scanned, number eligible, number successfully deleted, number of entries that failed with reasons, and number of Cloudinary images deleted. | Should | US-001 |
+| FR-013 | The summary email shall report, at minimum: run start timestamp, run end timestamp, run duration, dry-run status, the configured age threshold (`EntryAgeDays`), number of entries scanned, number eligible, number successfully deleted, number of entries that failed with reasons, and number of Cloudinary images deleted. | Should | US-001 |
 
 ---
 
@@ -353,7 +353,7 @@ for detailed schema information.
 
 | ID      | Trigger                                   | Recipient              | Content                                                                 | Method        |
 | ------- | --------------------------------------------| -------------------------| ---------------------------------------------------------------------------| ----------------|
-| NOT-001 | Cleanup run completes (success or partial failure) | `EmailRecipients`  | HTML summary: timestamp, dry-run flag, scanned/eligible/deleted/failed counts, per-failure reasons, images deleted count. | SMTP via MailKit |
+| NOT-001 | Cleanup run completes (success or partial failure) | `EmailRecipients`  | HTML summary: start/end timestamp, duration, dry-run flag, age threshold, scanned/eligible/deleted/failed counts, per-failure reasons, images deleted count. Branded "F&B Outlet Conditions Cleanup". | SMTP via MailKit |
 | NOT-002 | Cleanup run aborts due to an unhandled exception   | `EmailRecipients`  | HTML failure report: timestamp, exception message/type, stage reached before failure. | SMTP via MailKit |
 
 Both notifications are suppressed entirely when `EmailEnabled` is `false`.
@@ -503,7 +503,7 @@ is visible in monitoring.
 | TEST-004  | A failed Cloudinary image deletion prevents the SharePoint item delete call and records a failure. | Unit | PASS |
 | TEST-005  | `DryRun = true` results in zero calls to the Cloudinary delete API and zero calls to the SharePoint delete API. | Unit | PASS |
 | TEST-006  | Entry with fewer than 5 populated image fields only processes the populated ones; empty fields are skipped without failure. | Unit | PASS |
-| TEST-007  | Summary email is sent with correct counts when `EmailEnabled = true`.         | Unit  | PASS |
+| TEST-007  | Summary email is sent with correct counts, run end timestamp, duration, and age threshold when `EmailEnabled = true`, using the "F&B Outlet Conditions" branding. | Unit  | PASS |
 | TEST-008  | Failure email is sent when the orchestrator run throws.                      | Unit  | PASS |
 | TEST-009  | No email is sent (summary or failure) when `EmailEnabled = false`.           | Unit  | PASS |
 | TEST-010  | Cloudinary `public_id` is correctly parsed from representative Cloudinary delivery URLs, including a confirmed real-world production example (Dynamic Folder Mode account, see `docs/SCHEMA.md` Section 17). | Unit | PASS |
@@ -559,3 +559,4 @@ These are not currently implemented:
 | ------- | ---------- | ------------------------------------------| -------------|
 | 1.0     | 2026-10-08 | Initial specification for new project.    | Claude Code |
 | 1.1     | 2026-10-08 | Updated TEST-010's description to reflect the new confirmed real-world Cloudinary URL test case (see docs/SCHEMA.md Section 17). | Claude Code |
+| 1.2     | 2026-10-08 | FR-013/NOT-001 expanded to require run end timestamp, duration, and age threshold in the summary email, and to use the "F&B Outlet Conditions" branding instead of "Report Log"; TEST-007 description updated. | Claude Code |
